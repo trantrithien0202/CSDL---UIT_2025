@@ -194,6 +194,9 @@ SELECT * FROM NHANVIEN
 SELECT * FROM SANPHAM
 SELECT * FROM HOADON
 SELECT * FROM CTHD
+
+-- Tran Tri Thien - 24521670
+
 -----------------------------------LAB 1--------------------------------------
 ---------I. Ngôn ngữ định nghĩa dữ liệu (Data Definition Language)------------
 -- 2. Thêm vào thuộc tính GHICHU có kiểu dữ liệu varchar(20) cho quan hệ SANPHAM
