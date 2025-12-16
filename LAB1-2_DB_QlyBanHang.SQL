@@ -230,6 +230,83 @@ CHECK (SL >= 1)
 ALTER TABLE KHACHHANG
 ADD CONSTRAINT CK_NGDK
 CHECK (NGDK > NGSINH)
+-- 11. Ngày mua hàng (NGHD) của một khách hàng thành viên sẽ lớn hơn hoặc bằng ngày khách hàng đó đăng ký thành viên (NGDK).
+CREATE TRIGGER nghd_hoadon_insert
+ON HOADON
+AFTER INSERT
+AS
+IF(EXISTS ( SELECT * 
+			FROM inserted i JOIN KHACHHANG KH
+			ON i.MAKH = KH.MAKH
+			WHERE i.NGHD < KH.NGDK))
+BEGIN
+	rollback transaction
+	print 'Ngay mua hang phai lon hon hoac bang ngay dang ki'
+END
+-- 12. Ngày bán hàng (NGHD) của một nhân viên phải lớn hơn hoặc bằng ngày nhân viên đó vào làm.
+CREATE TRIGGER ngaybanhang_hoadon_insert
+ON HOADON
+AFTER INSERT
+AS
+IF( EXISTS (SELECT *
+			FROM inserted i JOIN NHANVIEN nv
+			ON i.MANV = nv.MANV
+			WHERE i.NGHD < nv.NGVL))
+BEGIN
+rollback transaction
+END
+-- 13. Mỗi một hóa đơn phải có ít nhất một chi tiết hóa đơn
+CREATE TRIGGER no_delete_last_cthd
+ON CTHD
+AFTER DELETE
+AS
+IF( NOT EXISTS (SELECT *
+				FROM deleted d join cthd
+				ON d.SOHD = cthd.SOHD))
+BEGIN 
+rollback transaction
+print'Phai ton tai it nhat 1 cthd'
+END
+
+-- 14. Trị giá của một hóa đơn là tổng thành tiền (số lượng*đơn giá) của các chi tiết thuộc hóa đơn đó
+CREATE TRIGGER set_trigia
+ON CTHD
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+UPDATE HOADON
+SET TRIGIA = (
+	SELECT SUM(CTHD.SL * SANPHAM.GIA)
+	FROM CTHD JOIN SANPHAM ON CTHD.MASP = SANPHAM.MASP
+	WHERE HOADON.SOHD = CTHD.SOHD )
+WHERE SOHD IN(
+	SELECT SOHD FROM inserted  
+	UNION
+	SELECT SOHD FROM deleted
+)
+END
+
+-- 15. Doanh số của một khách hàng là tổng trị giá các hóa đơn mà khách hàng thành viên đó đã mua.
+CREATE TRIGGER set_doanhso
+ON HOADON
+AFTER INSERT, DELETE, UPDATE
+AS
+BEGIN
+UPDATE KHACHHANG
+SET DOANHSO = (
+	SELECT SUM(TRIGIA)
+	FROM HOADON
+	WHERE KHACHHANG.MAKH = HOADON.MAKH
+)
+WHERE MAKH IN(
+	SELECT MAKH
+	FROM inserted
+	UNION
+	SELECT MAKH
+	FROM deleted
+)
+END
+
 ----------II. Ngôn ngữ thao tác dữ liệu (Data Manipulation Language)------------
 -- 2. Tạo quan hệ SANPHAM1 chứa toàn bộ dữ liệu của quan hệ SANPHAM. Tạo quan hệ KHACHHANG1 chứa toàn bộ dữ liệu của quan hệ KHACHHANG
 SELECT * INTO SANPHAM1
